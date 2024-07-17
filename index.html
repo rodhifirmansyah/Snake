@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>gem ular</title>
+    <style>
+        body {
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #FFF;
+            color: #FFF6E9;
+        }
+
+        .card {
+            background-color: #FF7F3E;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            text-align: center;
+            max-width: 500px;
+        }
+
+        .game-container {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            border-radius: 10px;
+            border: 10px solid #604CC3;
+            background-color: #80C4E9;
+            width: 100%;
+            max-width: 400px;
+            height: auto; /* Maintain aspect ratio */
+        }
+
+        .start-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 10px 20px;
+            font-size: 20px;
+            background-color: #FFC700;
+            color: #FFF455;
+            border: none;
+            cursor: pointer;
+            border-radius: 10px;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 100px;
+            margin-bottom: 50px;
+        }
+
+        .dpad {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .dpad-row {
+            display: flex;
+        }
+
+        .arrow {
+            width: 60px;
+            height: 60px;
+            background-color: #254336;
+            color: #6B8A7A;
+            border: none;
+            border-radius: 10px;
+            margin: 10px;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .arrow.up { transform: rotate(90deg); }
+        .arrow.down { transform: rotate(270deg); }
+        .arrow.left { transform: rotate(0deg); }
+        .arrow.right { transform: rotate(180deg); }
+
+        @media (max-width: 600px) {
+            .arrow {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="game-container">
+            <canvas id="gameCanvas" width="400" height="400"></canvas>
+            <button class="start-button" id="startButton">mulai bos</button>
+        </div>
+        <div class="controls">
+            <div class="dpad">
+                <div class="dpad-row">
+                    <button class="arrow up" id="upArrow"><</button>
+                </div>
+                <div class="dpad-row">
+                    <button class="arrow left" id="leftArrow"><</button>
+                    <div class="dpad-row" style="width: 50px;"></div>
+                    <button class="arrow right" id="rightArrow"><</button>
+                </div>
+                <div class="dpad-row">
+                    <button class="arrow down" id="downArrow"><</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startButton = document.getElementById('startButton');
+        const upArrow = document.getElementById('upArrow');
+        const downArrow = document.getElementById('downArrow');
+        const leftArrow = document.getElementById('leftArrow');
+        const rightArrow = document.getElementById('rightArrow');
+
+        const snakeColor = '#808836';
+        const foodColor = '#FFBF00';
+        const snakeBorderColor = '#373A40';
+
+        const boxSize = 20;
+        const canvasSize = 400;
+
+        let snake = [
+            { x: boxSize * 2, y: 0 },
+            { x: boxSize, y: 0 },
+            { x: 0, y: 0 }
+        ];
+
+        let direction = 'RIGHT';
+        let food;
+        let score;
+        let gameLoopInterval;
+
+        startButton.addEventListener('click', startGame);
+        document.addEventListener('keydown', changeDirection);
+        upArrow.addEventListener('click', () => changeDirection({ keyCode: 38 }));
+        downArrow.addEventListener('click', () => changeDirection({ keyCode: 40 }));
+        leftArrow.addEventListener('click', () => changeDirection({ keyCode: 37 }));
+        rightArrow.addEventListener('click', () => changeDirection({ keyCode: 39 }));
+
+        function startGame() {
+            snake = [
+                { x: boxSize * 2, y: 0 },
+                { x: boxSize, y: 0 },
+                { x: 0, y: 0 }
+            ];
+            direction = 'RIGHT';
+            food = createFood();
+            score = 0;
+
+            startButton.style.display = 'none';
+
+            if (gameLoopInterval) {
+                clearInterval(gameLoopInterval);
+            }
+
+            gameLoopInterval = setInterval(update, 100);
+        }
+
+        function createFood() {
+            return {
+                x: Math.floor(Math.random() * (canvasSize / boxSize)) * boxSize,
+                y: Math.floor(Math.random() * (canvasSize / boxSize)) * boxSize
+            };
+        }
+
+        function drawBox(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, boxSize, boxSize);
+            ctx.strokeStyle = snakeBorderColor;
+            ctx.strokeRect(x, y, boxSize, boxSize);
+        }
+
+        function drawSnake() {
+            snake.forEach(part => drawBox(part.x, part.y, snakeColor));
+        }
+
+        function drawFood() {
+            drawBox(food.x, food.y, foodColor);
+        }
+
+        function moveSnake() {
+            const head = { x: snake[0].x, y: snake[0].y };
+        
+            if (direction === 'LEFT') head.x -= boxSize;
+            if (direction === 'UP') head.y -= boxSize;
+            if (direction === 'RIGHT') head.x += boxSize;
+            if (direction === 'DOWN') head.y += boxSize;
+        
+            // Teleport the snake to the opposite side if it goes out of bounds
+            if (head.x < 0) head.x = canvasSize - boxSize;
+            if (head.x >= canvasSize) head.x = 0;
+            if (head.y < 0) head.y = canvasSize - boxSize;
+            if (head.y >= canvasSize) head.y = 0;
+        
+            snake.unshift(head);
+        
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                food = createFood();
+            } else {
+                snake.pop();
+            }
+        }
+        
+
+        function changeDirection(event) {
+            const keyPressed = event.keyCode;
+            const LEFT = 37;
+            const UP = 38;
+            const RIGHT = 39;
+            const DOWN = 40;
+
+            if (keyPressed === LEFT && direction !== 'RIGHT') direction = 'LEFT';
+            if (keyPressed === UP && direction !== 'DOWN') direction = 'UP';
+            if (keyPressed === RIGHT && direction !== 'LEFT') direction = 'RIGHT';
+            if (keyPressed === DOWN && direction !== 'UP') direction = 'DOWN';
+        }
+
+        function checkCollision() {
+            const head = snake[0];
+        
+            // Check collision with itself
+            for (let i = 4; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    return true;
+                }
+            }
+        
+            return false; // No wall collision check needed
+        }
+        
+
+        function update() {
+            if (checkCollision()) {
+                alert(`Game Over! Your score: ${score}`);
+                startButton.style.display = 'block';
+                clearInterval(gameLoopInterval);
+                return;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawFood();
+            moveSnake();
+            drawSnake();
+        }
+    </script>
+</body>
+</html>
